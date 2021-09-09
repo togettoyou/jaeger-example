@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger-example
+spec:
+  selector:
+    matchLabels:
+      app: jaeger-example
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jaeger-example
+    spec:
+      containers:
+        - name: jaeger-example
+          image: togettoyou/jaeger-example:latest
+          ports:
+            - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-example-service
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: jaeger-example
+  type: NodePort
