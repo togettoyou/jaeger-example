@@ -15,7 +15,6 @@ import (
 
 func init() {
 	cfg := jaegercfg.Configuration{
-		ServiceName: "jaeger-example", // 服务名
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:  jaeger.SamplerTypeConst,
 			Param: 1,
@@ -24,14 +23,15 @@ func init() {
 			LogSpans: true,
 		},
 	}
-	tracer, _, err := cfg.NewTracer(
+	_, err := cfg.InitGlobalTracer(
+		"jaeger-example", // 服务名
 		jaegercfg.Logger(jaegerlog.StdLogger),
 		jaegercfg.Metrics(metrics.NullFactory),
 	)
 	if err != nil {
 		panic(err)
 	}
-	opentracing.SetGlobalTracer(tracer)
+	fmt.Println("connect jaeger")
 }
 
 func main() {
