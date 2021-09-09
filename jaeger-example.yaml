@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: jaeger-example
+      annotations:
+        "sidecar.jaegertracing.io/inject": "true"
     spec:
       containers:
         - name: jaeger-example
