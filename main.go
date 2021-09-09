@@ -31,7 +31,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("connect jaeger")
 }
 
 func main() {
@@ -80,7 +79,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(time.Duration(rand.Intn(200)) * time.Millisecond)
 
 	// 发起同步请求
-	syncReq, _ := http.NewRequest("GET", "http://localhost:8888/service", nil)
+	syncReq, _ := http.NewRequest("GET", "http://localhost:8080/service", nil)
 	err = span.Tracer().Inject(span.Context(),
 		opentracing.TextMap,
 		opentracing.HTTPHeadersCarrier(syncReq.Header))
@@ -110,7 +109,7 @@ func serviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer sp.Finish()
 
-	dbReq, _ := http.NewRequest("GET", "http://localhost:8888/db", nil)
+	dbReq, _ := http.NewRequest("GET", "http://localhost:8080/db", nil)
 	err = sp.Tracer().Inject(sp.Context(),
 		opentracing.TextMap,
 		opentracing.HTTPHeadersCarrier(dbReq.Header))
