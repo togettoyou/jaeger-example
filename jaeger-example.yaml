@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jaeger-example
-  annotations:
-    "sidecar.jaegertracing.io/inject": "true" # 标记为 sidecar
 spec:
   selector:
     matchLabels:
@@ -14,7 +12,7 @@ spec:
       labels:
         app: jaeger-example
       annotations:
-        "sidecar.jaegertracing.io/inject": "true"
+        "sidecar.jaegertracing.io/inject": "true" # 标记为 sidecar
     spec:
       containers:
         - name: jaeger-example
