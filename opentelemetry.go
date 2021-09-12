@@ -2,6 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
+	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -9,10 +15,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
-	"log"
-	"math/rand"
-	"net/http"
-	"time"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func init() {
@@ -21,8 +24,8 @@ func init() {
 		panic(err)
 	}
 	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(tracesdk.AlwaysSample()),
 		tracesdk.WithBatcher(exp),
-		// 应用程序信息
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String("opentelemetry-example"), // 服务名
@@ -30,6 +33,7 @@ func init() {
 		)),
 	)
 	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 }
 
 func main() {
@@ -37,10 +41,10 @@ func main() {
 	addr := fmt.Sprintf(":%d", port)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", indexHandler)
-	mux.HandleFunc("/home", homeHandler)
-	mux.HandleFunc("/async", serviceHandler)
-	mux.HandleFunc("/service", serviceHandler)
-	mux.HandleFunc("/db", dbHandler)
+	mux.Handle("/home", otelhttp.NewHandler(http.HandlerFunc(homeHandler), "请求 /home"))
+	mux.Handle("/async", otelhttp.NewHandler(http.HandlerFunc(serviceHandler), "请求 /async"))
+	mux.Handle("/service", otelhttp.NewHandler(http.HandlerFunc(serviceHandler), "请求 /service"))
+	mux.Handle("/db", otelhttp.NewHandler(http.HandlerFunc(dbHandler), "请求 /db"))
 	fmt.Printf("http://localhost:%d\n", port)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
@@ -53,9 +57,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("开始请求...\n"))
 
-	// 在入口处设置一个根节点 span
-	tr := otel.Tracer("请求 /home")
-	ctx, span := tr.Start(r.Context(), "bar")
+	ctx := r.Context()
+	span := trace.SpanFromContext(ctx)
 	defer span.End()
 
 	// 发起异步请求
@@ -79,7 +82,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// 发起同步请求
 	syncReq, _ := http.NewRequest("GET", "http://localhost:8080/service", nil)
 	otel.GetTextMapPropagator().Inject(ctx,
-		propagation.HeaderCarrier(asyncReq.Header),
+		propagation.HeaderCarrier(syncReq.Header),
 	)
 	if _, err := http.DefaultClient.Do(syncReq); err != nil {
 		span.RecordError(err)
@@ -93,14 +96,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 // 模拟业务请求
 func serviceHandler(w http.ResponseWriter, r *http.Request) {
 	// 通过http header，提取span元数据信息
-	opName := r.URL.Path
-	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	tr := otel.Tracer(opName)
-	ctx, span := tr.Start(ctx, opName)
+	span := trace.SpanFromContext(
+		otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header)),
+	)
 	defer span.End()
 
 	dbReq, _ := http.NewRequest("GET", "http://localhost:8080/db", nil)
-	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(dbReq.Header))
+	otel.GetTextMapPropagator().Inject(r.Context(), propagation.HeaderCarrier(dbReq.Header))
 	if _, err := http.DefaultClient.Do(dbReq); err != nil {
 		span.RecordError(err)
 		span.SetAttributes(
@@ -114,10 +116,9 @@ func serviceHandler(w http.ResponseWriter, r *http.Request) {
 // 模拟DB调用
 func dbHandler(w http.ResponseWriter, r *http.Request) {
 	// 通过http header，提取span元数据信息
-	opName := r.URL.Path
-	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	tr := otel.Tracer(opName)
-	ctx, span := tr.Start(ctx, opName)
+	span := trace.SpanFromContext(
+		otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header)),
+	)
 	defer span.End()
 
 	time.Sleep(time.Duration(rand.Intn(200)) * time.Millisecond)

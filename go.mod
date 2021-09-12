@@ -8,6 +8,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.23.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.0.0-RC3 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.0.0-RC1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
