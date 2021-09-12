@@ -118,7 +118,7 @@ func serviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, err = http.DefaultClient.Do(dbReq); err != nil {
 		sp.SetTag("error", true)
-		sp.LogKV("请求 /da error", err)
+		sp.LogKV("请求 /db error", err)
 	}
 
 	time.Sleep(time.Duration(rand.Intn(200)) * time.Millisecond)

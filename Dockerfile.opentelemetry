@@ -3,7 +3,7 @@ ENV GO111MODULE=on
 ENV GOPROXY https://goproxy.cn,direct
 COPY . /root/togettoyou/
 WORKDIR /root/togettoyou/
-RUN CGO_ENABLED=0 go build -o jaeger-example main.go
+RUN CGO_ENABLED=0 go build -o jaeger-example opentelemetry.go
 
 FROM scratch
 COPY --from=builder /root/togettoyou/jaeger-example /root/togettoyou/
